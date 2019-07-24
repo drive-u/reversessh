@@ -151,17 +151,39 @@ def route():
     output = subprocess.check_output(["ip", "route", "show"]).decode()
     if 'default via' in output:
         print("Found default route")
+        return randomIpBasedOnDefaultRoute()
+    else:
+        if hasattr(args, 'deviceRegexWhenNoDefaultRoute') and args.deviceRegexWhenNoDefaultRoute:
+            options = [line for line in output.split("\n")
+                    if re.search("dev " + args.deviceRegexWhenNoDefaultRoute, line) is not None]
+            if len(options) > 0:
+                line = options[random.randrange(0, len(options))]
+                sourceAddress = re.search(r"src (\d+\.\d+\.\d+\.\d+)", line).group(1)
+                print("Attempting to use %s as source address" % sourceAddress)
+                return ['-b', sourceAddress]
+            else:
+                raise Exception("No route and no deviceRegexWhenNoDefaultRoute devices")
+        else:
+            raise Exception("No route")
+
+
+def randomIpBasedOnDefaultRoute():
+    ipRouteShow = subprocess.check_output(["ip", "route", "show"])
+    defaultInterfaces = re.findall(b"default via .* dev (.*?) proto", ipRouteShow )
+    if len(defaultInterfaces) == 0:
+        print("No default routes")
         return []
-    if hasattr(args, 'deviceRegexWhenNoDefaultRoute') and args.deviceRegexWhenNoDefaultRoute:
-        options = [line for line in output.split("\n")
-                   if re.search("dev " + args.deviceRegexWhenNoDefaultRoute, line) is not None]
-        if not options:
-            raise Exception("No route and no deviceRegexWhenNoDefaultRoute devices")
-        line = options[random.randrange(0, len(options))]
-        sourceAddress = re.search(r"src (\d+\.\d+\.\d+\.\d+)", line).group(1)
-        print("Attempting to use %s as source address" % sourceAddress)
-        return ['-b', sourceAddress]
-    raise Exception("No route")
+    ips = []
+    for interface in defaultInterfaces:
+        ipAddrShow = subprocess.check_output(["ip", "addr", "show", interface])
+        try:
+            ips.append(re.search(b"inet (.*?)/\d+", ipAddrShow).group(1))
+        except Exception as e:
+            print("Error finding default route. Error %s" % e)
+    if len(ips) == 0:
+        print("No default route ips found")
+        return []
+    return ['-b', ips[random.randint(0,len(ips)-1)]]
 
 
 def incomingConnection(conf, portRemote):
