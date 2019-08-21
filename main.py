@@ -48,6 +48,7 @@ createConfCmd = subparsers.add_parser(
     "service")
 createConfCmd.add_argument("--server", required=True,
                            help="The central server hostname / ip address")
+createConfCmd.add_argument("--serverPort", default=22, help="server port for initial ssh connection")
 createConfCmd.add_argument("--serverSudoUsername", default="ubuntu",
                            help="The user that can do sudo without password. this is "
                            "used only during setup, the server is started as a new unpriviledged user. "
@@ -130,7 +131,7 @@ def runRemoteScript(name, *pargs, **kwargs):
     encoded = base64.b64encode(open(filename, "rb").read()).decode()
     arguments = " ".join(["'%s'" % a for a in pargs] + ["'--%s=%s'" % (k, v) for k, v in kwargs.items()])
     return subprocess.check_output([
-        "ssh", "%s@%s" % (args.serverSudoUsername, args.server),
+        "ssh", "%s@%s" % (args.serverSudoUsername, args.server), "-p", "%s" % (args.serverPort),
         "echo %s | base64 -d | python3 - %s" % (encoded, arguments)]).decode()
 
 
