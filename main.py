@@ -137,7 +137,7 @@ def runRemoteScript(name, *pargs, **kwargs):
 
 def sshKeygen():
     hostsFile = tempfile.mktemp()
-    subprocess.check_call(["ssh-keygen", '-N', '', '-t', 'rsa', '-b', '4096', '-f', hostsFile])
+    subprocess.check_call(["ssh-keygen", '-N', '', '-t', 'rsa', '-b', '4096', '-f', hostsFile, '-C', args.comment])
     try:
         with open(hostsFile) as hostsFileHandle:
             private = hostsFileHandle.read()
@@ -259,7 +259,7 @@ if args.cmd == "setupServer":
                           sudoUsername=args.serverSudoUsername, username=args.username, port=args.port))
 elif args.cmd == "createConf":
     if os.path.exists(args.output):
-        raise Exception("Will not override output file")
+        raise Exception("Will not override output file %s" % args.output)
     keys = sshKeygen()
     response = runRemoteScript("installsshkey", username=args.username,
                                publicBase64=base64.b64encode(keys['public'].encode()).decode(),
